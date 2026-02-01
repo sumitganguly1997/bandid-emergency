@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import db from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { rateLimit } from '@/lib/rate-limit';
 
 function getAdminKey(): string {
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
   const secret = uuidv4();
 
   try {
+    const db = await getDb();
     db.prepare('INSERT INTO provisioned_bands (band_id, secret) VALUES (?, ?)').run(id, secret);
     return NextResponse.json({ bandId: id, secret, qrPayload: JSON.stringify({ bandId: id, secret }) });
   } catch {

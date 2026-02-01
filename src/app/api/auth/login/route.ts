@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
-import db from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { createToken, setAuthCookie } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = String(email).trim().toLowerCase();
 
+    const db = await getDb();
     const user = db.prepare('SELECT id, password FROM users WHERE email = ?').get(normalizedEmail) as UserRow | undefined;
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 });

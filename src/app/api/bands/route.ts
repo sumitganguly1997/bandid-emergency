@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import db from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { getAuthUserId } from '@/lib/auth';
 import { rateLimit } from '@/lib/rate-limit';
 
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Band ID and secret required' }, { status: 400 });
     }
 
+    const db = await getDb();
     const provisioned = db.prepare('SELECT band_id, secret FROM provisioned_bands WHERE band_id = ?').get(bandId) as ProvisionedRow | undefined;
     if (!provisioned) {
       return NextResponse.json({ error: 'This band ID is not recognized. Only official bands can be registered.' }, { status: 404 });

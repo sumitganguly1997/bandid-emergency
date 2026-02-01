@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import db from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { createToken, setAuthCookie } from '@/lib/auth';
 import bcrypt from 'bcryptjs';
 import { v4 as uuid } from 'uuid';
@@ -66,6 +66,8 @@ export async function POST() {
   }
 
   try {
+    const db = await getDb();
+
     // 1. Create or get dev user
     const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get(DEV_USER.email) as { id: string } | undefined;
     let userId: string;

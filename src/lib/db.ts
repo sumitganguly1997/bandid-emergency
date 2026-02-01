@@ -1,17 +1,19 @@
-import Database from 'better-sqlite3';
-import path from 'path';
+// Use the non-WASM (asm.js) build to avoid WASM file path issues in serverless
+import initSqlJs from 'sql.js/dist/sql-asm.js';
+import type { Database as SqlJsDatabase } from 'sql.js/dist/sql-asm.js';
 
-let _db: InstanceType<typeof Database> | null = null;
+let _db: SqlJsDatabase | null = null;
+let _initPromise: Promise<SqlJsDatabase> | null = null;
 
-function getDb(): InstanceType<typeof Database> {
-  if (!_db) {
-    const dbPath = path.join(process.cwd(), 'bandid.db');
-    _db = new Database(dbPath);
-    _db.pragma('journal_mode = WAL');
-    _db.pragma('foreign_keys = ON');
-    _db.pragma('busy_timeout = 5000');
+async function initDb(): Promise<SqlJsDatabase> {
+  if (_db) return _db;
+  if (_initPromise) return _initPromise;
 
-    _db.exec(`
+  _initPromise = (async () => {
+    const SQL = await initSqlJs();
+    _db = new SQL.Database();
+
+    _db.run(`
       CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -52,16 +54,89 @@ function getDb(): InstanceType<typeof Database> {
         FOREIGN KEY (band_id) REFERENCES bands(band_id)
       );
     `);
-  }
-  return _db;
+
+    _db.run('PRAGMA foreign_keys = ON');
+
+    return _db;
+  })();
+
+  return _initPromise;
 }
 
-const db = new Proxy({} as InstanceType<typeof Database>, {
-  get(_target, prop) {
-    const instance = getDb();
-    const val = (instance as unknown as Record<string | symbol, unknown>)[prop];
+// Compatibility layer that mimics the better-sqlite3 API
+// so all existing route handlers work without changes.
+interface Statement {
+  get(...params: unknown[]): Record<string, unknown> | undefined;
+  run(...params: unknown[]): { changes: number };
+  all(...params: unknown[]): Record<string, unknown>[];
+}
+
+interface DbCompat {
+  prepare(sql: string): Statement;
+  exec(sql: string): void;
+}
+
+function createCompat(database: SqlJsDatabase): DbCompat {
+  return {
+    prepare(sql: string): Statement {
+      return {
+        get(...params: unknown[]) {
+          const stmt = database.prepare(sql);
+          stmt.bind(params as unknown[]);
+          if (stmt.step()) {
+            const row = stmt.getAsObject();
+            stmt.free();
+            return row as Record<string, unknown>;
+          }
+          stmt.free();
+          return undefined;
+        },
+        run(...params: unknown[]) {
+          database.run(sql, params as unknown[]);
+          const changesResult = database.exec('SELECT changes() as c');
+          const changes = changesResult.length > 0 ? (changesResult[0].values[0][0] as number) : 0;
+          return { changes };
+        },
+        all(...params: unknown[]) {
+          const stmt = database.prepare(sql);
+          stmt.bind(params as unknown[]);
+          const results: Record<string, unknown>[] = [];
+          while (stmt.step()) {
+            results.push(stmt.getAsObject() as Record<string, unknown>);
+          }
+          stmt.free();
+          return results;
+        },
+      };
+    },
+    exec(sql: string) {
+      database.run(sql);
+    },
+  };
+}
+
+// Since sql.js init is async but better-sqlite3 was sync,
+// we use a proxy that lazily resolves. All API routes are async
+// so we ensure the DB is initialized before any call.
+let _compat: DbCompat | null = null;
+
+export async function getDb(): Promise<DbCompat> {
+  if (_compat) return _compat;
+  const database = await initDb();
+  _compat = createCompat(database);
+  return _compat;
+}
+
+// For backward compat: a sync proxy that throws if DB isn't ready.
+// Routes should use getDb() instead, but this keeps imports simple.
+const db = new Proxy({} as DbCompat, {
+  get(_target, prop: string) {
+    if (!_compat) {
+      throw new Error('Database not initialized. Call await getDb() first in your route handler.');
+    }
+    const val = _compat[prop as keyof DbCompat];
     if (typeof val === 'function') {
-      return val.bind(instance);
+      return val.bind(_compat);
     }
     return val;
   },

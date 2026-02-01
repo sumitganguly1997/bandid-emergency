@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
-import db from '@/lib/db';
+import { getDb } from '@/lib/db';
 import { createToken, setAuthCookie } from '@/lib/auth';
 import { validateEmail, validatePassword } from '@/lib/validate';
 import { rateLimit } from '@/lib/rate-limit';
@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
 
     const normalizedEmail = email.trim().toLowerCase();
 
+    const db = await getDb();
     const existing = db.prepare('SELECT id FROM users WHERE email = ?').get(normalizedEmail);
     if (existing) {
       return NextResponse.json({ error: 'Email already registered' }, { status: 409 });
