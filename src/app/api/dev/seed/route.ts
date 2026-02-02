@@ -19,11 +19,7 @@ const SEED_BANDS = [
       city_country: 'San Francisco, USA',
       blood_group: 'A+',
       emergency_note: 'Allergic to penicillin. Takes daily insulin.',
-      full_name_public: 1,
-      emergency_contact_public: 1,
-      city_country_public: 1,
-      blood_group_public: 1,
-      emergency_note_public: 1,
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 1, blood_group_public: 1, emergency_note_public: 1,
     },
   },
   {
@@ -35,11 +31,7 @@ const SEED_BANDS = [
       city_country: 'London, UK',
       blood_group: 'O-',
       emergency_note: 'Epilepsy. Emergency meds in left pocket.',
-      full_name_public: 1,
-      emergency_contact_public: 1,
-      city_country_public: 0,
-      blood_group_public: 1,
-      emergency_note_public: 1,
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 0, blood_group_public: 1, emergency_note_public: 1,
     },
   },
   {
@@ -51,11 +43,91 @@ const SEED_BANDS = [
       city_country: 'Tokyo, Japan',
       blood_group: 'B+',
       emergency_note: 'Asthma. Carries inhaler.',
-      full_name_public: 1,
-      emergency_contact_public: 1,
-      city_country_public: 1,
-      blood_group_public: 1,
-      emergency_note_public: 0,
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 1, blood_group_public: 1, emergency_note_public: 0,
+    },
+  },
+  {
+    bandId: 'BAND-0004',
+    secret: 'dev-secret-0004',
+    profile: {
+      full_name: 'David Kim',
+      emergency_contact: '+82-10-9876-5432',
+      city_country: 'Seoul, South Korea',
+      blood_group: 'AB+',
+      emergency_note: 'Diabetic (Type 1). Insulin pump on left hip.',
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 1, blood_group_public: 1, emergency_note_public: 1,
+    },
+  },
+  {
+    bandId: 'BAND-0005',
+    secret: 'dev-secret-0005',
+    profile: {
+      full_name: 'Emma Wilson',
+      emergency_contact: '+61-4-1234-5678',
+      city_country: 'Sydney, Australia',
+      blood_group: 'O+',
+      emergency_note: 'Severe nut allergy. EpiPen in bag.',
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 0, blood_group_public: 1, emergency_note_public: 1,
+    },
+  },
+  {
+    bandId: 'BAND-0006',
+    secret: 'dev-secret-0006',
+    profile: {
+      full_name: 'Fatima Al-Rashid',
+      emergency_contact: '+971-50-123-4567',
+      city_country: 'Dubai, UAE',
+      blood_group: 'A-',
+      emergency_note: 'Heart condition. On blood thinners (Warfarin).',
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 1, blood_group_public: 1, emergency_note_public: 1,
+    },
+  },
+  {
+    bandId: 'BAND-0007',
+    secret: 'dev-secret-0007',
+    profile: {
+      full_name: 'Gabriel Santos',
+      emergency_contact: '+55-11-98765-4321',
+      city_country: 'Sao Paulo, Brazil',
+      blood_group: 'B-',
+      emergency_note: 'Deaf in right ear. Communicate on left side.',
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 1, blood_group_public: 0, emergency_note_public: 1,
+    },
+  },
+  {
+    bandId: 'BAND-0008',
+    secret: 'dev-secret-0008',
+    profile: {
+      full_name: 'Hannah Mueller',
+      emergency_contact: '+49-170-1234567',
+      city_country: 'Berlin, Germany',
+      blood_group: 'AB-',
+      emergency_note: 'Pregnant (7 months). Gestational diabetes.',
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 0, blood_group_public: 1, emergency_note_public: 1,
+    },
+  },
+  {
+    bandId: 'BAND-0009',
+    secret: 'dev-secret-0009',
+    profile: {
+      full_name: 'Ivan Petrov',
+      emergency_contact: '+7-916-123-4567',
+      city_country: 'Moscow, Russia',
+      blood_group: 'O+',
+      emergency_note: 'Pacemaker installed. No MRI scans.',
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 1, blood_group_public: 1, emergency_note_public: 1,
+    },
+  },
+  {
+    bandId: 'BAND-0010',
+    secret: 'dev-secret-0010',
+    profile: {
+      full_name: 'Julia Chen',
+      emergency_contact: '+86-138-0013-8000',
+      city_country: 'Shanghai, China',
+      blood_group: 'A+',
+      emergency_note: 'Latex allergy. Anxiety disorder - may panic.',
+      full_name_public: 1, emergency_contact_public: 1, city_country_public: 1, blood_group_public: 1, emergency_note_public: 1,
     },
   },
 ];
@@ -99,13 +171,26 @@ export async function POST() {
       );
     }
 
-    // 3. Create auth token and set cookie
+    // 3. Provision 90 additional unclaimed bands (BAND-0011 to BAND-0100)
+    const allBandIds = SEED_BANDS.map(b => b.bandId);
+    for (let i = 11; i <= 100; i++) {
+      const padded = String(i).padStart(4, '0');
+      const bId = `BAND-${padded}`;
+      const sec = `dev-secret-${padded}`;
+      const existing = db.prepare('SELECT band_id FROM provisioned_bands WHERE band_id = ?').get(bId);
+      if (!existing) {
+        db.prepare('INSERT INTO provisioned_bands (band_id, secret) VALUES (?, ?)').run(bId, sec);
+      }
+      allBandIds.push(bId);
+    }
+
+    // 4. Create auth token and set cookie
     const token = createToken(userId);
     const response = NextResponse.json({
       success: true,
       userId,
       email: DEV_USER.email,
-      bands: SEED_BANDS.map(b => b.bandId),
+      bands: allBandIds,
     });
     setAuthCookie(response, token);
 
