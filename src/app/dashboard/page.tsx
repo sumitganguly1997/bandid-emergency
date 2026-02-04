@@ -20,8 +20,11 @@ interface User {
   created_at: string;
 }
 
+type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated';
+
 export default function DashboardPage() {
   const router = useRouter();
+  const [authStatus, setAuthStatus] = useState<AuthStatus>('checking');
   const [user, setUser] = useState<User | null>(null);
   const [bands, setBands] = useState<Band[]>([]);
   const [loading, setLoading] = useState(true);
@@ -30,20 +33,66 @@ export default function DashboardPage() {
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
+  // Login form state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isLogin, setIsLogin] = useState(true);
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState('');
+
   useEffect(() => {
-    fetchUser();
-    fetchBands();
+    checkAuth();
   }, []);
 
-  async function fetchUser() {
+  async function checkAuth() {
     try {
       const res = await fetch('/api/user/me');
       if (res.ok) {
         const data = await res.json();
         setUser(data);
+        setAuthStatus('authenticated');
+        fetchBands();
+      } else {
+        setAuthStatus('unauthenticated');
+        setLoading(false);
       }
     } catch {
-      // Silently fail - user info is not critical
+      setAuthStatus('unauthenticated');
+      setLoading(false);
+    }
+  }
+
+  async function handleAuth(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email || !password) {
+      setAuthError('Please fill in all fields');
+      return;
+    }
+    setAuthLoading(true);
+    setAuthError('');
+
+    const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
+    try {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setAuthError(data.error);
+        return;
+      }
+      // Refresh to load user data
+      localStorage.setItem('userId', data.userId);
+      setAuthStatus('authenticated');
+      setUser({ id: data.userId, email, created_at: new Date().toISOString() });
+      fetchBands();
+    } catch {
+      setAuthError('Network error. Please try again.');
+    } finally {
+      setAuthLoading(false);
     }
   }
 
@@ -53,7 +102,10 @@ export default function DashboardPage() {
       await fetch('/api/auth/logout', { method: 'POST' });
       localStorage.removeItem('userId');
       localStorage.removeItem('activeBandId');
-      router.push('/');
+      setAuthStatus('unauthenticated');
+      setUser(null);
+      setBands([]);
+      setLoggingOut(false);
     } catch {
       setError('Failed to log out');
       setLoggingOut(false);
@@ -64,7 +116,7 @@ export default function DashboardPage() {
     try {
       const res = await fetch('/api/user/bands');
       if (res.status === 401) {
-        router.push('/signup');
+        setAuthStatus('unauthenticated');
         return;
       }
       const data = await res.json();
@@ -105,7 +157,8 @@ export default function DashboardPage() {
     return Math.round((filled / 4) * 100);
   }
 
-  if (loading) {
+  // Loading state
+  if (authStatus === 'checking') {
     return (
       <div className="min-h-screen flex flex-col">
         <header className="bg-indigo-500 text-white px-4 py-4">
@@ -126,6 +179,118 @@ export default function DashboardPage() {
     );
   }
 
+  // Not logged in - show login/signup form
+  if (authStatus === 'unauthenticated') {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <header className="bg-indigo-500 text-white px-4 py-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20">
+              <i className="fa-solid fa-arrow-left"></i>
+            </button>
+            <h1 className="text-lg font-semibold">My Account</h1>
+          </div>
+        </header>
+
+        <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">
+          <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mb-6">
+            <i className="fa-solid fa-user-lock text-indigo-500 text-3xl"></i>
+          </div>
+
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
+            {isLogin ? 'Welcome Back' : 'Create Account'}
+          </h2>
+          <p className="text-gray-500 mb-8 text-center">
+            {isLogin ? 'Log in to manage your bands' : 'Sign up to start managing your bands'}
+          </p>
+
+          <form onSubmit={handleAuth} className="w-full max-w-sm space-y-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Email Address</label>
+              <input
+                type="email"
+                value={email}
+                onChange={e => { setEmail(e.target.value); setAuthError(''); }}
+                placeholder="name@example.com"
+                autoComplete="email"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-700 mb-1 block">Password</label>
+              <input
+                type="password"
+                value={password}
+                onChange={e => { setPassword(e.target.value); setAuthError(''); }}
+                placeholder={isLogin ? 'Your password' : 'Min 8 chars, uppercase, lowercase, number'}
+                autoComplete={isLogin ? 'current-password' : 'new-password'}
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:border-indigo-500 focus:outline-none"
+              />
+              {!isLogin && (
+                <p className="text-xs text-gray-400 mt-1">At least 8 characters with uppercase, lowercase, and a number</p>
+              )}
+            </div>
+
+            {authError && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600">
+                {authError}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={authLoading}
+              className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-semibold py-3 rounded-xl transition disabled:opacity-50"
+            >
+              {authLoading ? 'Please wait...' : isLogin ? 'Log In' : 'Create Account'}
+            </button>
+
+            <p className="text-center text-sm text-gray-500">
+              {isLogin ? "Don't have an account? " : 'Already have an account? '}
+              <button
+                type="button"
+                onClick={() => { setIsLogin(!isLogin); setAuthError(''); }}
+                className="text-indigo-500 font-medium"
+              >
+                {isLogin ? 'Sign Up' : 'Log In'}
+              </button>
+            </p>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  // Logged in but still loading bands
+  if (loading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <header className="bg-indigo-500 text-white px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20">
+                <i className="fa-solid fa-arrow-left"></i>
+              </button>
+              <div>
+                <h1 className="text-lg font-semibold">My Account</h1>
+                {user && (
+                  <p className="text-sm text-indigo-200">{user.email}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-gray-500">
+            <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+            Loading your bands...
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Logged in - show dashboard
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-indigo-500 text-white px-4 py-4">
