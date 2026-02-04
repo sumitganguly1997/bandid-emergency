@@ -14,6 +14,13 @@ interface ProfileData {
   city_country_public: boolean;
   blood_group_public: boolean;
   emergency_note_public: boolean;
+  pdf_public: boolean;
+}
+
+interface PdfData {
+  filename: string | null;
+  uploading: boolean;
+  error: string;
 }
 
 function EditProfileContent() {
@@ -35,9 +42,15 @@ function EditProfileContent() {
     city_country_public: false,
     blood_group_public: true,
     emergency_note_public: true,
+    pdf_public: true,
   });
 
   const [bandId, setBandId] = useState<string | null>(null);
+  const [pdfData, setPdfData] = useState<PdfData>({
+    filename: null,
+    uploading: false,
+    error: '',
+  });
 
   useEffect(() => {
     // Get band ID from URL query param first, then fall back to localStorage
@@ -69,7 +82,11 @@ function EditProfileContent() {
           city_country_public: !!data.city_country_public,
           blood_group_public: !!data.blood_group_public,
           emergency_note_public: !!data.emergency_note_public,
+          pdf_public: data.pdf_public !== undefined ? !!data.pdf_public : true,
         });
+        if (data.pdf_filename) {
+          setPdfData(prev => ({ ...prev, filename: data.pdf_filename }));
+        }
       })
       .catch(err => setLoadError(err.message));
   }, [searchParams]);
@@ -92,6 +109,7 @@ function EditProfileContent() {
         city_country_public: profile.city_country_public ? 1 : 0,
         blood_group_public: profile.blood_group_public ? 1 : 0,
         emergency_note_public: profile.emergency_note_public ? 1 : 0,
+        pdf_public: profile.pdf_public ? 1 : 0,
       };
       const res = await fetch(`/api/profile/${bandId}`, {
         method: 'PUT',
@@ -115,6 +133,89 @@ function EditProfileContent() {
       setSaveError(err instanceof Error ? err.message : 'Failed to save. Please try again.');
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handlePdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !bandId) return;
+
+    if (file.type !== 'application/pdf') {
+      setPdfData(prev => ({ ...prev, error: 'Please select a PDF file' }));
+      return;
+    }
+
+    if (file.size > 2 * 1024 * 1024) {
+      setPdfData(prev => ({ ...prev, error: 'File too large. Maximum size is 2MB.' }));
+      return;
+    }
+
+    setPdfData(prev => ({ ...prev, uploading: true, error: '' }));
+
+    try {
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // Remove data URL prefix to get just the base64
+          const base64Data = result.split(',')[1];
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const res = await fetch(`/api/profile/${bandId}/pdf`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({
+          filename: file.name,
+          data: base64,
+          isPublic: profile.pdf_public,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to upload PDF');
+      }
+
+      setPdfData({ filename: file.name, uploading: false, error: '' });
+    } catch (err) {
+      setPdfData(prev => ({
+        ...prev,
+        uploading: false,
+        error: err instanceof Error ? err.message : 'Upload failed',
+      }));
+    }
+
+    // Reset the input
+    e.target.value = '';
+  }
+
+  async function handlePdfDelete() {
+    if (!bandId || !pdfData.filename) return;
+
+    setPdfData(prev => ({ ...prev, uploading: true, error: '' }));
+
+    try {
+      const res = await fetch(`/api/profile/${bandId}/pdf`, {
+        method: 'DELETE',
+        credentials: 'same-origin',
+      });
+
+      if (!res.ok) {
+        throw new Error('Failed to delete PDF');
+      }
+
+      setPdfData({ filename: null, uploading: false, error: '' });
+    } catch (err) {
+      setPdfData(prev => ({
+        ...prev,
+        uploading: false,
+        error: err instanceof Error ? err.message : 'Delete failed',
+      }));
     }
   }
 
@@ -223,6 +324,76 @@ function EditProfileContent() {
             </div>
           );
         })}
+
+        {/* PDF Upload Section */}
+        <div className="space-y-2 pt-4 border-t border-gray-100">
+          <div className="flex items-center justify-between">
+            <label className={`text-sm font-medium flex items-center gap-2 ${profile.pdf_public ? 'text-indigo-600' : 'text-gray-400'}`}>
+              <i className="fa-solid fa-file-pdf"></i>
+              Medical Document (PDF)
+            </label>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-400">{profile.pdf_public ? 'Public' : 'Private'}</span>
+              <Toggle
+                checked={profile.pdf_public}
+                onChange={v => setProfile(p => ({ ...p, pdf_public: v }))}
+              />
+            </div>
+          </div>
+
+          {pdfData.error && (
+            <div className="bg-red-50 border border-red-200 rounded-xl px-3 py-2 text-sm text-red-600">
+              {pdfData.error}
+            </div>
+          )}
+
+          {pdfData.filename ? (
+            <div className="flex items-center gap-3 p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+              <div className="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                <i className="fa-solid fa-file-pdf text-indigo-500"></i>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-gray-900 truncate">{pdfData.filename}</p>
+                <p className="text-xs text-gray-500">PDF Document</p>
+              </div>
+              <button
+                onClick={handlePdfDelete}
+                disabled={pdfData.uploading}
+                className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-100 text-red-500 transition disabled:opacity-50"
+              >
+                {pdfData.uploading ? (
+                  <i className="fa-solid fa-spinner fa-spin"></i>
+                ) : (
+                  <i className="fa-solid fa-trash"></i>
+                )}
+              </button>
+            </div>
+          ) : (
+            <label className="block">
+              <div className="border-2 border-dashed border-gray-200 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/50 transition">
+                {pdfData.uploading ? (
+                  <div className="text-indigo-500">
+                    <i className="fa-solid fa-spinner fa-spin text-2xl mb-2"></i>
+                    <p className="text-sm">Uploading...</p>
+                  </div>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-cloud-arrow-up text-2xl text-gray-400 mb-2"></i>
+                    <p className="text-sm text-gray-600 font-medium">Upload PDF</p>
+                    <p className="text-xs text-gray-400 mt-1">Medical records, insurance card, etc. (Max 2MB)</p>
+                  </>
+                )}
+              </div>
+              <input
+                type="file"
+                accept="application/pdf"
+                onChange={handlePdfUpload}
+                disabled={pdfData.uploading}
+                className="hidden"
+              />
+            </label>
+          )}
+        </div>
       </div>
 
       {/* Save button */}

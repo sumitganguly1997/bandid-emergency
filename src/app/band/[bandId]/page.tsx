@@ -11,6 +11,8 @@ interface PublicProfile {
   blood_group?: string;
   emergency_note?: string;
   photo_url?: string;
+  pdf_filename?: string;
+  has_pdf?: boolean;
   updated_at?: string;
 }
 
@@ -19,7 +21,44 @@ export default function PublicViewPage({ params }: { params: Promise<{ bandId: s
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorType, setErrorType] = useState<'not_found' | 'network' | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const router = useRouter();
+
+  async function handlePdfDownload() {
+    if (!profile?.has_pdf) return;
+    setPdfLoading(true);
+
+    try {
+      const res = await fetch(`/api/profile/${bandId}/pdf`, { credentials: 'same-origin' });
+      if (!res.ok) {
+        alert('Unable to download PDF');
+        return;
+      }
+      const data = await res.json();
+
+      // Create blob from base64 and trigger download
+      const byteCharacters = atob(data.data);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: 'application/pdf' });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = data.filename || 'document.pdf';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Failed to download PDF');
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   useEffect(() => {
     fetch(`/api/profile/${bandId}`, { credentials: 'same-origin' })
@@ -67,7 +106,7 @@ export default function PublicViewPage({ params }: { params: Promise<{ bandId: s
     );
   }
 
-  const hasAnyInfo = profile.full_name || profile.emergency_contact || profile.blood_group || profile.city_country || profile.emergency_note;
+  const hasAnyInfo = profile.full_name || profile.emergency_contact || profile.blood_group || profile.city_country || profile.emergency_note || profile.has_pdf;
 
   return (
     <div className="min-h-screen flex flex-col pb-24">
@@ -154,6 +193,29 @@ export default function PublicViewPage({ params }: { params: Promise<{ bandId: s
                     <p className="text-xs text-gray-400 mb-1"><i className="fa-solid fa-notes-medical mr-1"></i>Owner&apos;s Note</p>
                     <p className="text-sm text-gray-700">{profile.emergency_note}</p>
                   </div>
+                )}
+
+                {profile.has_pdf && (
+                  <button
+                    onClick={handlePdfDownload}
+                    disabled={pdfLoading}
+                    className="w-full flex items-center gap-3 p-3 bg-purple-50 rounded-xl hover:bg-purple-100 transition disabled:opacity-50"
+                  >
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center shrink-0">
+                      {pdfLoading ? (
+                        <i className="fa-solid fa-spinner fa-spin text-purple-500"></i>
+                      ) : (
+                        <i className="fa-solid fa-file-pdf text-purple-500"></i>
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <p className="text-xs text-gray-400">Medical Document</p>
+                      <p className="font-medium text-purple-700">
+                        {pdfLoading ? 'Downloading...' : profile.pdf_filename || 'Download PDF'}
+                      </p>
+                    </div>
+                    <i className="fa-solid fa-download text-purple-400 ml-auto"></i>
+                  </button>
                 )}
               </div>
             </>

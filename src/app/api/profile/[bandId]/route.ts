@@ -10,6 +10,8 @@ interface ProfileRow {
   blood_group: string;
   emergency_note: string;
   photo_url: string;
+  pdf_filename: string | null;
+  pdf_public: number;
   full_name_public: number;
   emergency_contact_public: number;
   city_country_public: number;
@@ -39,16 +41,25 @@ export async function GET(
   const isOwner = userId && band && userId === band.user_id;
 
   if (isOwner) {
-    return NextResponse.json(profile);
+    // Don't send pdf_data in the profile response (too large), just the filename
+    const ownerProfile = {
+      ...profile,
+      has_pdf: !!profile.pdf_filename,
+    };
+    return NextResponse.json(ownerProfile);
   }
 
   // Public view: only return public fields
-  const publicProfile: Record<string, string> = { band_id: bandId };
+  const publicProfile: Record<string, string | boolean> = { band_id: bandId };
   if (profile.full_name_public) publicProfile.full_name = profile.full_name;
   if (profile.emergency_contact_public) publicProfile.emergency_contact = profile.emergency_contact;
   if (profile.city_country_public) publicProfile.city_country = profile.city_country;
   if (profile.blood_group_public) publicProfile.blood_group = profile.blood_group;
   if (profile.emergency_note_public) publicProfile.emergency_note = profile.emergency_note;
+  if (profile.pdf_public && profile.pdf_filename) {
+    publicProfile.pdf_filename = profile.pdf_filename;
+    publicProfile.has_pdf = true;
+  }
   publicProfile.photo_url = profile.photo_url;
   publicProfile.updated_at = profile.updated_at;
 
@@ -89,7 +100,7 @@ export async function PUT(
   if (body.emergency_note !== undefined) sanitized.emergency_note = sanitizeString(body.emergency_note, 500);
 
   // Boolean toggles
-  const toggles = ['full_name_public', 'emergency_contact_public', 'city_country_public', 'blood_group_public', 'emergency_note_public'];
+  const toggles = ['full_name_public', 'emergency_contact_public', 'city_country_public', 'blood_group_public', 'emergency_note_public', 'pdf_public'];
   for (const t of toggles) {
     if (body[t] !== undefined) sanitized[t] = body[t] ? 1 : 0;
   }
