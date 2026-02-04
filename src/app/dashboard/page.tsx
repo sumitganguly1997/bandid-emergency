@@ -14,17 +14,51 @@ interface Band {
   updated_at: string | null;
 }
 
+interface User {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
+  const [user, setUser] = useState<User | null>(null);
   const [bands, setBands] = useState<Band[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [unlinkingBand, setUnlinkingBand] = useState<string | null>(null);
   const [confirmUnlink, setConfirmUnlink] = useState<string | null>(null);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
+    fetchUser();
     fetchBands();
   }, []);
+
+  async function fetchUser() {
+    try {
+      const res = await fetch('/api/user/me');
+      if (res.ok) {
+        const data = await res.json();
+        setUser(data);
+      }
+    } catch {
+      // Silently fail - user info is not critical
+    }
+  }
+
+  async function handleLogout() {
+    setLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      localStorage.removeItem('userId');
+      localStorage.removeItem('activeBandId');
+      router.push('/');
+    } catch {
+      setError('Failed to log out');
+      setLoggingOut(false);
+    }
+  }
 
   async function fetchBands() {
     try {
@@ -74,11 +108,13 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col">
-        <header className="px-4 py-4 flex items-center gap-3 border-b border-gray-100">
-          <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
-            <i className="fa-solid fa-arrow-left text-gray-600"></i>
-          </button>
-          <h1 className="text-lg font-semibold">My Bands</h1>
+        <header className="bg-indigo-500 text-white px-4 py-4">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20">
+              <i className="fa-solid fa-arrow-left"></i>
+            </button>
+            <h1 className="text-lg font-semibold">My Account</h1>
+          </div>
         </header>
         <div className="flex-1 flex items-center justify-center">
           <div className="text-gray-500">
@@ -92,19 +128,44 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="px-4 py-4 flex items-center gap-3 border-b border-gray-100">
-        <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
-          <i className="fa-solid fa-arrow-left text-gray-600"></i>
-        </button>
-        <h1 className="text-lg font-semibold">My Bands</h1>
+      <header className="bg-indigo-500 text-white px-4 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-white/20">
+              <i className="fa-solid fa-arrow-left"></i>
+            </button>
+            <div>
+              <h1 className="text-lg font-semibold">My Account</h1>
+              {user && (
+                <p className="text-sm text-indigo-200">{user.email}</p>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition disabled:opacity-50"
+          >
+            {loggingOut ? (
+              <i className="fa-solid fa-spinner fa-spin"></i>
+            ) : (
+              <i className="fa-solid fa-right-from-bracket"></i>
+            )}
+            <span className="hidden sm:inline">{loggingOut ? 'Logging out...' : 'Log Out'}</span>
+          </button>
+        </div>
+      </header>
+
+      <div className="px-4 py-4 flex items-center justify-between border-b border-gray-100">
+        <h2 className="text-lg font-semibold text-gray-900">My Bands</h2>
         <Link
           href="/register-band"
-          className="ml-auto bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2"
+          className="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2"
         >
           <i className="fa-solid fa-plus"></i>
           <span className="hidden sm:inline">Add Band</span>
         </Link>
-      </header>
+      </div>
 
       <div className="flex-1 px-4 py-6">
         {error && (

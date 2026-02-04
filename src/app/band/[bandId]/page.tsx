@@ -77,6 +77,13 @@ export default function PublicViewPage({ params }: { params: Promise<{ bandId: s
           <i className="fa-solid fa-shield-halved text-xl"></i>
           <span className="font-bold">BandID</span>
         </div>
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          <i className="fa-solid fa-user"></i>
+          <span className="hidden sm:inline">My Account</span>
+        </button>
       </header>
 
       {/* Band info */}

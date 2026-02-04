@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 interface ProfileData {
   full_name: string;
@@ -16,8 +16,9 @@ interface ProfileData {
   emergency_note_public: boolean;
 }
 
-export default function EditProfilePage() {
+function EditProfileContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [showPreview, setShowPreview] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -39,8 +40,16 @@ export default function EditProfilePage() {
   const [bandId, setBandId] = useState<string | null>(null);
 
   useEffect(() => {
-    const id = localStorage.getItem('activeBandId');
+    // Get band ID from URL query param first, then fall back to localStorage
+    const urlBandId = searchParams.get('band');
+    const id = urlBandId || localStorage.getItem('activeBandId');
     setBandId(id);
+
+    // Store in localStorage for consistency
+    if (urlBandId) {
+      localStorage.setItem('activeBandId', urlBandId);
+    }
+
     if (!id) return;
 
     fetch(`/api/profile/${id}`, { credentials: 'same-origin' })
@@ -63,7 +72,7 @@ export default function EditProfilePage() {
         });
       })
       .catch(err => setLoadError(err.message));
-  }, []);
+  }, [searchParams]);
 
   async function handleSave() {
     if (!bandId) return;
@@ -130,10 +139,15 @@ export default function EditProfilePage() {
     <div className="min-h-screen flex flex-col pb-20">
       {/* Header */}
       <header className="sticky top-0 z-10 bg-white px-4 py-4 flex items-center gap-3 border-b border-gray-100">
-        <button onClick={() => router.back()} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+        <button onClick={() => router.push('/dashboard')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
           <i className="fa-solid fa-arrow-left text-gray-600"></i>
         </button>
-        <h1 className="text-lg font-semibold">Edit Details</h1>
+        <div>
+          <h1 className="text-lg font-semibold">Edit Details</h1>
+          {bandId && (
+            <p className="text-xs text-gray-400 font-mono">{bandId}</p>
+          )}
+        </div>
         <button onClick={() => setShowPreview(true)} className="ml-auto w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
           <i className="fa-solid fa-eye text-indigo-500"></i>
         </button>
@@ -274,5 +288,17 @@ export default function EditProfilePage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function EditProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <i className="fa-solid fa-spinner fa-spin text-indigo-500 text-2xl"></i>
+      </div>
+    }>
+      <EditProfileContent />
+    </Suspense>
   );
 }
