@@ -73,54 +73,65 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 flex items-center justify-center">
-        <div className="text-white text-lg">Loading...</div>
-      </main>
+      <div className="min-h-screen flex flex-col">
+        <header className="px-4 py-4 flex items-center gap-3 border-b border-gray-100">
+          <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+            <i className="fa-solid fa-arrow-left text-gray-600"></i>
+          </button>
+          <h1 className="text-lg font-semibold">My Bands</h1>
+        </header>
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-gray-500">
+            <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+            Loading...
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 p-4 sm:p-8">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-white">My Bands</h1>
-            <p className="text-slate-400 mt-1">Manage all your emergency ID bands</p>
-          </div>
-          <Link
-            href="/register-band"
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2"
-          >
-            <i className="fa-solid fa-plus"></i>
-            <span className="hidden sm:inline">Add Band</span>
-          </Link>
-        </div>
+    <div className="min-h-screen flex flex-col">
+      <header className="px-4 py-4 flex items-center gap-3 border-b border-gray-100">
+        <button onClick={() => router.push('/')} className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100">
+          <i className="fa-solid fa-arrow-left text-gray-600"></i>
+        </button>
+        <h1 className="text-lg font-semibold">My Bands</h1>
+        <Link
+          href="/register-band"
+          className="ml-auto bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition flex items-center gap-2"
+        >
+          <i className="fa-solid fa-plus"></i>
+          <span className="hidden sm:inline">Add Band</span>
+        </Link>
+      </header>
 
+      <div className="flex-1 px-4 py-6">
         {error && (
-          <div className="bg-red-500/20 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-600 mb-4">
             {error}
           </div>
         )}
 
         {bands.length === 0 ? (
-          <div className="bg-slate-800/50 border border-slate-700 rounded-xl p-8 text-center">
-            <div className="w-16 h-16 bg-slate-700 rounded-full flex items-center justify-center mx-auto mb-4">
-              <i className="fa-solid fa-id-card text-2xl text-slate-400"></i>
+          <div className="text-center py-12">
+            <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i className="fa-solid fa-id-card text-indigo-500 text-3xl"></i>
             </div>
-            <h2 className="text-xl font-semibold text-white mb-2">No bands linked yet</h2>
-            <p className="text-slate-400 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">No bands linked yet</h2>
+            <p className="text-gray-500 mb-6">
               Register your first emergency ID band to get started
             </p>
             <Link
               href="/register-band"
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+              className="inline-flex items-center gap-2 bg-indigo-500 hover:bg-indigo-600 text-white px-6 py-3 rounded-xl font-medium transition"
             >
               <i className="fa-solid fa-plus"></i>
               Register a Band
             </Link>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="space-y-4">
             {bands.map((band) => {
               const completeness = getProfileCompleteness(band);
               const isComplete = completeness === 100;
@@ -128,53 +139,53 @@ export default function DashboardPage() {
               return (
                 <div
                   key={band.band_id}
-                  className="bg-slate-800/50 border border-slate-700 rounded-xl p-5 hover:border-slate-600 transition-colors"
+                  className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm"
                 >
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 bg-blue-600/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <i className="fa-solid fa-id-badge text-blue-400"></i>
+                        <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">
+                          <i className="fa-solid fa-id-badge text-indigo-500"></i>
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-mono font-bold text-white truncate">
+                          <h3 className="font-mono font-bold text-gray-900 truncate">
                             {band.band_id}
                           </h3>
-                          <p className="text-sm text-slate-400">
+                          <p className="text-sm text-gray-500">
                             {band.full_name || 'No name set'}
                           </p>
                         </div>
                       </div>
 
-                      <div className="flex flex-wrap gap-3 text-sm text-slate-400 mt-3">
+                      <div className="flex flex-wrap gap-3 text-sm text-gray-500 mt-3">
                         {band.blood_group && (
-                          <span className="flex items-center gap-1">
-                            <i className="fa-solid fa-droplet text-red-400"></i>
+                          <span className="flex items-center gap-1 bg-red-50 text-red-600 px-2 py-1 rounded-lg">
+                            <i className="fa-solid fa-droplet"></i>
                             {band.blood_group}
                           </span>
                         )}
                         {band.city_country && (
-                          <span className="flex items-center gap-1">
-                            <i className="fa-solid fa-location-dot text-green-400"></i>
+                          <span className="flex items-center gap-1 bg-green-50 text-green-600 px-2 py-1 rounded-lg">
+                            <i className="fa-solid fa-location-dot"></i>
                             {band.city_country}
                           </span>
                         )}
                         {band.emergency_contact && (
-                          <span className="flex items-center gap-1">
-                            <i className="fa-solid fa-phone text-yellow-400"></i>
+                          <span className="flex items-center gap-1 bg-amber-50 text-amber-600 px-2 py-1 rounded-lg">
+                            <i className="fa-solid fa-phone"></i>
                             {band.emergency_contact}
                           </span>
                         )}
                       </div>
 
-                      <div className="mt-3">
+                      <div className="mt-4">
                         <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="text-slate-500">Profile completeness</span>
-                          <span className={isComplete ? 'text-green-400' : 'text-amber-400'}>
+                          <span className="text-gray-400">Profile completeness</span>
+                          <span className={isComplete ? 'text-green-600 font-medium' : 'text-amber-600 font-medium'}>
                             {completeness}%
                           </span>
                         </div>
-                        <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
+                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all ${
                               isComplete ? 'bg-green-500' : 'bg-amber-500'
@@ -188,21 +199,21 @@ export default function DashboardPage() {
                     <div className="flex sm:flex-col gap-2">
                       <Link
                         href={`/edit-profile?band=${band.band_id}`}
-                        className="flex-1 sm:flex-none bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center"
+                        className="flex-1 sm:flex-none bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition text-center"
                       >
                         <i className="fa-solid fa-pen mr-2"></i>
                         Edit
                       </Link>
                       <Link
                         href={`/band/${band.band_id}`}
-                        className="flex-1 sm:flex-none bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center"
+                        className="flex-1 sm:flex-none border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition text-center"
                       >
                         <i className="fa-solid fa-eye mr-2"></i>
                         View
                       </Link>
                       <button
                         onClick={() => setConfirmUnlink(band.band_id)}
-                        className="flex-1 sm:flex-none bg-red-600/20 hover:bg-red-600/40 text-red-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center"
+                        className="flex-1 sm:flex-none border border-red-200 hover:bg-red-50 text-red-600 px-4 py-2 rounded-xl text-sm font-medium transition text-center"
                       >
                         <i className="fa-solid fa-link-slash mr-2"></i>
                         Unlink
@@ -211,8 +222,8 @@ export default function DashboardPage() {
                   </div>
 
                   {confirmUnlink === band.band_id && (
-                    <div className="mt-4 pt-4 border-t border-slate-600">
-                      <p className="text-amber-400 text-sm mb-3">
+                    <div className="mt-4 pt-4 border-t border-gray-100">
+                      <p className="text-amber-600 text-sm mb-3">
                         <i className="fa-solid fa-triangle-exclamation mr-2"></i>
                         Are you sure? This will delete all profile data for this band.
                       </p>
@@ -220,13 +231,18 @@ export default function DashboardPage() {
                         <button
                           onClick={() => handleUnlink(band.band_id)}
                           disabled={unlinkingBand === band.band_id}
-                          className="flex-1 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                          className="flex-1 bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-xl text-sm font-medium transition disabled:opacity-50"
                         >
-                          {unlinkingBand === band.band_id ? 'Unlinking...' : 'Yes, Unlink'}
+                          {unlinkingBand === band.band_id ? (
+                            <>
+                              <i className="fa-solid fa-spinner fa-spin mr-2"></i>
+                              Unlinking...
+                            </>
+                          ) : 'Yes, Unlink'}
                         </button>
                         <button
                           onClick={() => setConfirmUnlink(null)}
-                          className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          className="flex-1 border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-xl text-sm font-medium transition"
                         >
                           Cancel
                         </button>
@@ -239,22 +255,16 @@ export default function DashboardPage() {
           </div>
         )}
 
-        <div className="mt-8 pt-6 border-t border-slate-700">
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-            <div className="text-slate-400 text-sm">
-              <i className="fa-solid fa-circle-info mr-2"></i>
-              Each band can have its own emergency profile with different information.
+        <div className="mt-8 pt-6 border-t border-gray-100">
+          <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex gap-3">
+            <i className="fa-solid fa-circle-info text-gray-400 mt-0.5"></i>
+            <div className="text-sm text-gray-500">
+              <p className="font-medium text-gray-600 mb-1">Multiple bands</p>
+              <p>Each band can have its own emergency profile with different information. Great for family members or different activities.</p>
             </div>
-            <Link
-              href="/"
-              className="text-blue-400 hover:text-blue-300 text-sm font-medium"
-            >
-              <i className="fa-solid fa-arrow-left mr-2"></i>
-              Back to Home
-            </Link>
           </div>
         </div>
       </div>
-    </main>
+    </div>
   );
 }
