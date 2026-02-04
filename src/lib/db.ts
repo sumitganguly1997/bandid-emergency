@@ -57,6 +57,15 @@ async function initDb(): Promise<SqlJsDatabase> {
 
     _db.run('PRAGMA foreign_keys = ON');
 
+    // Seed provisioned bands
+    const { SEED_BANDS } = await import('@/lib/seed-bands');
+    for (const [bandId, secret] of SEED_BANDS) {
+      _db.run(
+        'INSERT OR IGNORE INTO provisioned_bands (band_id, secret) VALUES (?, ?)',
+        [bandId, secret]
+      );
+    }
+
     return _db;
   })();
 
