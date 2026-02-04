@@ -39,9 +39,18 @@ export default function Home() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-indigo-500 text-white px-6 py-4 flex items-center gap-3">
-        <i className="fa-solid fa-shield-halved text-2xl"></i>
-        <span className="text-xl font-bold">BandID</span>
+      <header className="bg-indigo-500 text-white px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <i className="fa-solid fa-shield-halved text-2xl"></i>
+          <span className="text-xl font-bold">BandID</span>
+        </div>
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="flex items-center gap-2 bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg text-sm font-medium transition"
+        >
+          <i className="fa-solid fa-user"></i>
+          <span className="hidden sm:inline">My Account</span>
+        </button>
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6 py-12">

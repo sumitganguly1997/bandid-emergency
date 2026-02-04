@@ -40,7 +40,7 @@ export default function RegisterBandPage() {
         setScannedBandId(trimmedId);
         setStatus('success');
         localStorage.setItem('activeBandId', trimmedId);
-        setTimeout(() => router.push('/edit-profile'), 2000);
+        setTimeout(() => router.push(`/edit-profile?band=${trimmedId}`), 2000);
       } else if (res.status === 401) {
         router.push('/signup');
       } else if (res.status === 409) {
